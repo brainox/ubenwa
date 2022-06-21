@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'dart:developer';
+import 'dart:developer' as log;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ubenwa/screens/home_screen.dart';
@@ -70,6 +70,9 @@ class _SignupCardState extends State<SignupCard> {
   final GlobalKey<FormState> _formKey = GlobalKey();
   var _passwordVisible = false;
   var _isLoading = false;
+  bool _isEmailEmpty = true;
+  bool _isPasswordEmpty = true;
+  bool _isNameEmpty = true;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -146,13 +149,13 @@ class _SignupCardState extends State<SignupCard> {
     });
 
     try {
-      var result = await Provider.of<DioClient>(context, listen: false).signup(
+      var result = await DioClient.instance.signup(
           email: '${_authData['email']}',
           firstName: '${_authData['name']}',
           lastName: '${_authData['name']}',
           password: '${_authData['password']}',
           passwordConfirmation: '${_authData['password']}');
-      print('the response is ${result.statusCode}');
+      log.log('the response is ${result.statusCode}');
       if (result.statusCode == "200" || result.statusCode == "201") {
         const successMessage = 'Successfully signed up. Login now.';
         // Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
@@ -163,7 +166,7 @@ class _SignupCardState extends State<SignupCard> {
         _showErrorDialog(errorMessage);
       }
     } catch (error) {
-      print(error);
+      log.log(error.toString());
       const errorMessage =
           'Could not authenticate you. Please try again later.';
       _showErrorDialog(errorMessage);
@@ -242,13 +245,17 @@ class _SignupCardState extends State<SignupCard> {
                       fillColor: Color(0xffE6E6E6),
                       focusColor: Color(0xffE6E6E6),
                     ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Invalid name!';
-                      }
-                    },
                     onSaved: (value) {
                       _authData['name'] = value!;
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        if (value.isEmpty) {
+                          _isNameEmpty = true;
+                        } else {
+                          _isNameEmpty = false;
+                        }
+                      });
                     },
                   ),
                 ),
@@ -288,13 +295,17 @@ class _SignupCardState extends State<SignupCard> {
                       fillColor: Color(0xffE6E6E6),
                       focusColor: Color(0xffE6E6E6),
                     ),
-                    validator: (value) {
-                      if (value!.isEmpty || !value.contains('@')) {
-                        return 'Invalid email!';
-                      }
-                    },
                     onSaved: (value) {
                       _authData['email'] = value!;
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        if (value.isEmpty || !value.contains('@')) {
+                          _isEmailEmpty = true;
+                        } else {
+                          _isEmailEmpty = false;
+                        }
+                      });
                     },
                   ),
                 ),
@@ -361,6 +372,18 @@ class _SignupCardState extends State<SignupCard> {
                     onSaved: (value) {
                       _authData['password'] = value!;
                     },
+                    onChanged: (value) {
+                      setState(() {
+                        if (value.isEmpty ||
+                            value.length < 5 ||
+                            !value.contains(".") ||
+                            !value.contains(",")) {
+                          _isPasswordEmpty = true;
+                        } else {
+                          _isPasswordEmpty = false;
+                        }
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(
@@ -409,7 +432,8 @@ class _SignupCardState extends State<SignupCard> {
                   SizedBox(
                     width: 110,
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed:
+                          (_isEmailEmpty || _isPasswordEmpty) ? null : _submit,
                       child: Text("Sign up"),
                       style: ElevatedButton.styleFrom(
                           primary: AppColors.kButtonColor,
@@ -443,30 +467,6 @@ class _SignupCardState extends State<SignupCard> {
                               fontWeight: FontWeight.w500)),
                       // Privacy Policy.
                     ],
-                  ),
-                ),
-                const SizedBox(
-                  height: 5,
-                ),
-                SizedBox(
-                  width: 110,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      print("Hello world");
-                      Workmanager().registerOneOffTask(
-                        "taskone",
-                        "testTask",
-                        initialDelay: Duration(seconds: 5),
-                      );
-                    },
-                    child: Text("Sign up"),
-                    style: ElevatedButton.styleFrom(
-                        primary: AppColors.kButtonColor,
-                        onPrimary: Colors.white,
-                        elevation: 0, // Elev
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)) // ation
-                        ),
                   ),
                 ),
               ],

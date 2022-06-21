@@ -1,3 +1,4 @@
+import 'dart:developer' as log;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -68,6 +69,8 @@ class _LoginCardState extends State<LoginCard> {
   final GlobalKey<FormState> _formKey = GlobalKey();
   var _isLoading = false;
   var _passwordVisible = false;
+  bool _isEmailEmpty = true;
+  bool _isPasswordEmpty = true;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   late TapGestureRecognizer _tapGestureRecognizer;
@@ -106,6 +109,8 @@ class _LoginCardState extends State<LoginCard> {
   @override
   void dispose() {
     _tapGestureRecognizer.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -123,9 +128,10 @@ class _LoginCardState extends State<LoginCard> {
     });
 
     try {
-      var result = await Provider.of<DioClient>(context, listen: false).login(
+      var result = await DioClient.instance.login(
           email: '${_authData['email']}', password: '${_authData['password']}');
-      print('the response is ${result.statusCode}');
+      log.log("THe preresponse is ");
+      log.log('the response is ${result.statusCode}');
       if (result.statusCode == "200" || result.statusCode == "201") {
         Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
       } else {
@@ -136,7 +142,7 @@ class _LoginCardState extends State<LoginCard> {
     } catch (error) {
       const errorMessage =
           'Could not authenticate you. Please try again later.';
-      print(error);
+      log.log(error.toString());
       _showErrorDialog(errorMessage);
     }
 
@@ -213,12 +219,21 @@ class _LoginCardState extends State<LoginCard> {
                       focusColor: Color(0xffE6E6E6),
                     ),
                     validator: (value) {
-                      if (value!.isEmpty || !value.contains('@')) {
+                      if (value!.isEmpty) {
                         return 'Invalid email!';
                       }
                     },
                     onSaved: (value) {
                       _authData['email'] = value!;
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        if (value.isEmpty || !value.contains('@')) {
+                          _isEmailEmpty = true;
+                        } else {
+                          _isEmailEmpty = false;
+                        }
+                      });
                     },
                   ),
                 ),
@@ -277,13 +292,17 @@ class _LoginCardState extends State<LoginCard> {
                         },
                       ),
                     ),
-                    validator: (value) {
-                      if (value!.isEmpty || value.length < 5) {
-                        return 'Password is too short!';
-                      }
-                    },
                     onSaved: (value) {
                       _authData['password'] = value!;
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        if (value.isEmpty) {
+                          _isPasswordEmpty = true;
+                        } else {
+                          _isPasswordEmpty = false;
+                        }
+                      });
                     },
                   ),
                 ),
@@ -309,7 +328,8 @@ class _LoginCardState extends State<LoginCard> {
                   SizedBox(
                     width: 110,
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed:
+                          (_isEmailEmpty || _isPasswordEmpty) ? null : _submit,
                       child: Text("Login"),
                       style: ElevatedButton.styleFrom(
                           primary: AppColors.kButtonColor,

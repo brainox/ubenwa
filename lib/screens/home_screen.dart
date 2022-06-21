@@ -1,13 +1,55 @@
 import 'dart:async';
-
+import 'dart:developer' as log;
+import 'dart:isolate';
+import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 import 'package:ubenwa/models/newborns.dart';
 import 'package:ubenwa/utils/app_colors.dart';
 import 'package:workmanager/workmanager.dart';
-
+import '../main.dart';
 import '../models/datum.dart';
 import '../providers/dio_client.dart';
+import '../utils/result.dart';
+
+Future<Result<void>> handleCreateNewbornRequest() async {
+  var newbornsName = [
+    "Kingsley",
+    "Esther",
+    "Victor",
+    "Prince",
+    "Michael",
+    "Amina",
+    "Buhari",
+    "Stella",
+    "Rachael",
+    "Gospel"
+  ];
+  var newbornsGender = [
+    "male",
+    "female",
+    "male",
+    'male',
+    "male",
+    "female",
+    "male",
+    "female",
+    "female",
+    "male"
+  ];
+
+  Random random = Random();
+  int randomIndex = random.nextInt(11);
+
+  var result = await DioClient.instance.createNewBorn(
+      name: newbornsName[randomIndex],
+      gestation: "2021-08-26T12:04:50.821Z",
+      gender: newbornsGender[randomIndex]);
+
+  return result;
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -18,101 +60,67 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Timer? timer;
-  bool startStop = true;
-
-  startTimer() {
-    print("Timer is started");
-    timer = Timer.periodic(Duration(seconds: 10), (timer) {
-      print("MADE CREATENEWBORN REQUEST");
-      // handleCreateNewbornRequest();
-      setState(() {});
-      //mytimer.cancel() //to terminate this timer
-    });
-  }
-
-  stopTimer() {
-    timer?.cancel();
-    print("Timer is Cancel");
-    setState(() {});
-  }
+  bool value = false;
 
   String time = "";
-  // @override
-  // void initState() {
-  //   Timer timer = Timer.periodic(Duration(seconds: 10), (timer) {
-  //     _handleCreateNewbornRequest();
-  //     setState(() {});
-  //     //mytimer.cancel() //to terminate this timer
-  //   });
-  //   // timer.isActive;
-  //
-  //   super.initState();
-  // }
+  @override
+  void initState() {
+    Workmanager().initialize(
+        callbackDispatcher, // The top level function, aka callbackDispatcher
+        isInDebugMode:
+            true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
+        );
+    super.initState();
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    log.log("message before port opened");
+    var port = ReceivePort();
+    IsolateNameServer.registerPortWithName(port.sendPort, "notifyChannel");
+    log.log("port have been registered to a port");
+    port.listen((dynamic data) async {
+      log.log("got data from $data from isolate");
+    });
   }
 
-  static Future<void> handleCreateNewbornRequest(BuildContext context) async {
-    await Provider.of<DioClient>(context, listen: false).createNewBorn(
-        name: "Mr just",
-        gestation: "2021-08-26T12:04:50.821Z",
-        gender: "female");
+  onchange(bool value) {
+    setState(() {
+      this.value = value;
+
+      if (this.value == true) {
+        Workmanager().registerPeriodicTask(
+          "1",
+          "uploadCompleter",
+          frequency: const Duration(minutes: 20),
+        );
+        handleCreateNewbornRequest();
+      } else {
+        Workmanager().cancelAll();
+      }
+    });
   }
+
+  Widget buildSwitch() => Transform.scale(
+        scale: 2,
+        child: Switch.adaptive(
+            value: value, onChanged: (value) => onchange(value)),
+      );
 
   @override
   Widget build(BuildContext context) {
-    // return Scaffold(
-    //   body: Center(
-    //     child: TextButton(
-    //       onPressed: _submit,
-    //       child: Text("Create New born"),
-    //     ),
-    //   ),
-    // );
     return Scaffold(
+      appBar: AppBar(
+        title: Text("Home View"),
+      ),
       body: SingleChildScrollView(
         child: Container(
           width: MediaQuery.of(context).size.width,
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Workmanager().registerOneOffTask(
-                        "taskone",
-                        "testTask",
-                        initialDelay: Duration(seconds: 5),
-                      );
-                    },
-                    child: Text("Start"),
-                    style: ElevatedButton.styleFrom(
-                        primary: AppColors.kButtonColor,
-                        onPrimary: Colors.white,
-                        elevation: 0, // Elev
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)) // ation
-                        ),
-                  ),
-                  ElevatedButton(
-                    onPressed: stopTimer,
-                    child: Text("Stop"),
-                    style: ElevatedButton.styleFrom(
-                        primary: AppColors.kButtonColor,
-                        onPrimary: Colors.white,
-                        elevation: 0, // Elev
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)) // ation
-                        ),
-                  ),
-                ],
-              ),
+              buildSwitch(),
               FutureBuilder<Newborns?>(
-                // future: _dioClient.viewAllNewborns(),
                 future: Provider.of<DioClient>(context, listen: false)
                     .viewAllNewborns(),
                 builder: (context, snapShot) {
@@ -134,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       children: [
                                         Text(
                                           time,
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                               fontSize: 30,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.pink),

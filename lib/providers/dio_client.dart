@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'dart:developer' as log;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +9,12 @@ import 'package:ubenwa/models/newborns.dart';
 import '../utils/result.dart';
 
 class DioClient with ChangeNotifier {
+  DioClient._privateConstructor();
+  static final DioClient _instance = DioClient._privateConstructor();
+
+  // factory DioClient() => instance;
+  static DioClient get instance => _instance;
+
   final _baseUrl = 'https://ubenwa-cat-api-stage.herokuapp.com/api/v1';
   String? _token;
   int? _userId;
@@ -54,8 +60,8 @@ class DioClient with ChangeNotifier {
       final response = await dio.post(pathUrl, data: body);
       final int? statusCode = response.statusCode;
       var response1 = response.data;
-      print("response1 ${response1}");
-      print("statusCode ${statusCode}");
+      log.log("response1 ${response1}");
+      log.log("statusCode ${statusCode}");
       if (statusCode != 200 && statusCode != 201) {
         result.error = true;
         result.statusCode = statusCode.toString();
@@ -86,15 +92,15 @@ class DioClient with ChangeNotifier {
       var responseData = response.data;
       if (responseData['error'] != null) {
         // throw HttpException(responseData['error']['message']);
-        print("error in ${responseData["error"]}");
+        log.log("error in ${responseData["error"]}");
       }
       _token = responseData['token'];
       _userId = responseData['user_id'];
 
-      print("response1 ${responseData}");
-      print("statusCode ${statusCode}");
-      print("Token is ${_token}");
-      print("User id is ${_userId}");
+      log.log("response1 ${responseData}");
+      log.log("statusCode ${statusCode}");
+      log.log("Token is ${_token}");
+      log.log("User id is ${_userId}");
       if (statusCode != 200 && statusCode != 201) {
         result.error = true;
         result.statusCode = statusCode.toString();
@@ -133,17 +139,17 @@ class DioClient with ChangeNotifier {
       HttpHeaders.authorizationHeader: "Bearer ${token}"
     };
 
-    print("the token is ${token}");
+    log.log("the token is ${token}");
     try {
       final response = await dio.post(pathUrl,
           data: bodyData, options: Options(headers: header));
       final int? statusCode = response.statusCode;
       var responseDatad = response.data;
       if (responseDatad['error'] != null) {
-        print("error in ${responseDatad["error"]}");
+        log.log("error in ${responseDatad["error"]}");
       }
-      print("response from create new borns ${responseDatad}");
-      print("statusCode from create new borns ${statusCode}");
+      log.log("response from create new borns ${responseDatad}");
+      log.log("statusCode from create new borns ${statusCode}");
       if (statusCode != 200 && statusCode != 201) {
         result.error = true;
         result.statusCode = statusCode.toString();
@@ -169,24 +175,24 @@ class DioClient with ChangeNotifier {
       HttpHeaders.contentTypeHeader: 'application/vnd.api+json',
       HttpHeaders.authorizationHeader: "Bearer ${token}"
     };
-    print("PATHURL: ${pathUrl}");
-    print("BEARER TOKEN: Bearer ${token}");
+    log.log("PATHURL: ${pathUrl}");
+    log.log("BEARER TOKEN: Bearer ${token}");
     try {
       Response newbornsResponse =
           await dio.get(pathUrl, options: Options(headers: header));
-      print('RESPONSE: ${newbornsResponse}');
+      // log.log('RESPONSE: ${newbornsResponse}');
       newborns = Newborns.fromJson(newbornsResponse.data);
     } on DioError catch (e) {
       if (e.response != null) {
-        print('Dio error!');
-        print('STATUS: ${e.response?.statusCode}');
-        print('DATA: ${e.response?.data}');
-        print('HEADERS: ${e.response?.headers}');
-        print('ERROR MESSAGE: ${e.message}');
+        log.log('Dio error!');
+        log.log('STATUS: ${e.response?.statusCode}');
+        log.log('DATA: ${e.response?.data}');
+        log.log('HEADERS: ${e.response?.headers}');
+        log.log('ERROR MESSAGE: ${e.message}');
       } else {
         // Error due to setting up or sending the request
-        print('Error sending request!');
-        print(e.message);
+        log.log('Error sending request!');
+        log.log(e.message);
       }
     }
 
